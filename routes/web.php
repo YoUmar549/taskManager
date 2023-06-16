@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,7 +22,8 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
     $tasks = Task::all();
-    return view('tasks.index', compact('tasks'));
+    $users = User::all();
+    return view('tasks.index', compact('tasks', 'users'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 

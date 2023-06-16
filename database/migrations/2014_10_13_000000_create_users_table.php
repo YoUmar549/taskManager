@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Task;
 
 return new class extends Migration
 {
@@ -28,5 +29,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
+    }
+
+    public function tasks() {
+        return $this->hasMany(Task::class);
     }
 };

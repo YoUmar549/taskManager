@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\TaskController;
+use App\Http\Controllers\Task\TaskController;
 
 /*
  * All routes related to the tasks management
