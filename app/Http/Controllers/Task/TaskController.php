@@ -14,14 +14,15 @@ class TaskController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
         $users = User::all();
         $statuses = ['New', 'In progress', 'Finished'];
 
         $selectedUser = $request->query('user');
         $selectedStatus = $request->query('status');
 
-        $tasksQuery = DB::table('tasks');
+        $tasksQuery = Task::query();
 
         if ($selectedUser) {
             $tasksQuery->where('user_id', $selectedUser);
@@ -31,25 +32,11 @@ class TaskController extends Controller
             $tasksQuery->where('status', $selectedStatus);
         }
 
-        $tasks = $tasksQuery->paginate(3);
-
-        $tasks->appends(['user' => $selectedUser, 'status' => $selectedStatus]);
-
-        // Load the user data for each task
-        $taskIds = $tasks->pluck('id');
-        $taskUserMap = DB::table('tasks')
-            ->whereIn('id', $taskIds)
-            ->pluck('user_id', 'id')
-            ->all();
-
-        foreach ($tasks as $task) {
-            $taskId = $task->id;
-            $userId = $taskUserMap[$taskId] ?? null;
-            $task->user = User::find($userId);
-        }
+        $tasks = $tasksQuery->paginate(10);
 
         return view('tasks.index', compact('tasks', 'users', 'statuses', 'selectedUser', 'selectedStatus'));
     }
+
 
 
     /**
@@ -88,9 +75,12 @@ class TaskController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id) {
-        //
+    public function show(string $id)
+    {
+        $task = Task::findOrFail($id);
+        return view('tasks.show', compact('task'));
     }
+
 
     /**
      * Show the form for editing the specified resource.
@@ -104,33 +94,70 @@ class TaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Task $task)
-    {
-        // Check if the authenticated user owns the task
-        if ($task->user_id !== auth()->user()->id) {
+    public function update(Request $request, Task $task) {
+        // Check if the request is an AJAX request
+        if ($request->ajax()) {
+            $fieldName = $request->input('field_name');
+            $updatedValue = $request->input('updated_value');
+
+            // Update the task attribute based on the field name
+            if ($fieldName === 'title') {
+                $task->title = $updatedValue;
+            } elseif ($fieldName === 'description') {
+                $task->description = $updatedValue;
+            } elseif ($fieldName === 'user') {
+                $task->user_id = $updatedValue;
+            } elseif ($fieldName === 'status') {
+                $task->status = $updatedValue;
+            } elseif ($fieldName === 'deadline') {
+                $task->deadline = $updatedValue;
+            }
+
+            // Save the updated task
+            $task->save();
+
+            return response()->json([
+                'message' => 'Task updated successfully.',
+            ]);
+        }
+
+        // Check if the authenticated user is the owner of the task or an admin
+        $user = auth()->user();
+        if ($task->user_id !== $user->id && !$user->admin) {
             return redirect()->route('tasks.index')->withErrors(['error' => 'You are not authorized to update this task.']);
         }
 
-        // Authorization passed, proceed with updating the task
-        $request->validate([
-            'title' => 'required',
-            'user_id' => 'required',
-            'description' => 'nullable',
-            'status' => 'required'
-        ]);
+        // Validation rules
+        $rules = [
+            'status' => 'required',
+        ];
 
-        $task->title = $request->input('title');
-        $task->description = $request->input('description');
-        $task->user_id = $request->input('user_id');
+        // Only enforce other field validations if the user is an admin
+        if ($user->admin) {
+            $rules = array_merge($rules, [
+                'title' => 'required',
+                'user_id' => 'required',
+                'description' => 'nullable',
+                'deadline' => 'required|date',
+            ]);
+        }
+
+        // Validate the request
+        $request->validate($rules);
+
+        // Update the task attributes
+        if ($user->admin) {
+            $task->title = $request->input('title');
+            $task->user_id = $request->input('user_id');
+            $task->description = $request->input('description');
+            $task->deadline = $request->input('deadline');
+        }
+
         $task->status = $request->input('status');
-        $task->load('user');
-
         $task->save();
 
         return redirect()->route('tasks.index')->with('success', 'Task updated successfully.');
     }
-
-
 
     /**
      * Remove the specified resource from storage.

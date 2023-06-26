@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use App\Models\User;
 
 class ProfileController extends Controller
 {
@@ -57,4 +58,39 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    public function index() {
+        // Check if the authenticated user is an admin
+        $admin = auth()->user();
+        if (!$admin->admin) {
+            return redirect()->back()->with('error', 'You are not authorized to view this page.');
+        }
+
+        // Get all users
+        $users = User::all();
+
+        return view('profile.index', compact('users'));
+    }
+
+
+    public function updateRole(Request $request, User $user) {
+        // Check if the authenticated user is an admin
+        $admin = auth()->user();
+        if (!$admin->admin) {
+            return redirect()->back()->with('error', 'You are not authorized to perform this action.');
+        }
+
+        // Validate the incoming request
+        $request->validate([
+            'admin' => 'required|boolean',
+        ]);
+
+        // Update the user's role
+        $user->admin = $request->input('admin');
+        $user->save();
+
+        return redirect()->back()->with('success', 'User role updated successfully.');
+    }
+
+
 }

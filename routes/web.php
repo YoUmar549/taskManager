@@ -23,7 +23,12 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $tasks = Task::all();
     $users = User::all();
-    return view('tasks.index', compact('tasks', 'users'));
+    $statuses = ['New', 'In progress', 'Finished'];
+    // Fetch the selectedUser from the request query parameters
+    $selectedUser = request()->query('user');
+    $selectedStatus = request()->query('status');
+
+    return view('tasks.index', compact('tasks', 'users', 'statuses', 'selectedUser', 'selectedStatus'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
@@ -41,6 +46,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::group(['prefix' => 'tasks', 'namespace' => 'App\Http\Controllers\Task'], function () {
     require __DIR__ . '/tasks.php';
 });
+
+Route::get('/users', [ProfileController::class, 'index'])->name('users.index');
+//Update users role
+Route::put('/user/{user}', [ProfileController::class, 'updateRole'])->name('users.updateRole');
 
 
 require __DIR__.'/auth.php';
